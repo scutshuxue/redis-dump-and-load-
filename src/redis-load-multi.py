@@ -32,7 +32,7 @@ class loadThread(threading.Thread):
                     type = item['type']
                     value = item['value']
                     self._writer(pipe, key, type, value,self.emptyKey)
-                if size>1024*1024:
+                if size>1024*1024*3:
                     pipe.execute()
                     pipe=r.pipeline()
                     size=0
@@ -50,35 +50,13 @@ class loadThread(threading.Thread):
             for element in value:
                 pipe.sadd(key, element)
         elif type == 'zset':
-            for element in value.keys():
-                pipe.zadd(key,element,value[element])
+            for element,v in value:
+                pipe.zadd(key,element,value)
         elif type == 'hash':
             for element in value.keys():
                 pipe.hset(key,element,value[element])
         else:
             raise UnknownTypeError("Unknown key type: %s" % type)
-
-
-def load(fp, host='localhost', port=6379, password=None, db=0, empty=False):
-    #s = fp.read()
-    r = redis.Redis(host=host, port=port, password=password, db=db)
-    if empty:
-        r.flushdb()   
-    pipe=r.pipeline()
-    size = 0
-    for s in fp.xreadlines():
-        table = json.loads(s)
-        size = size+s.__len__()
-        for key in table:
-            item = table[key]
-            type = item['type']
-            value = item['value']
-            _writer(pipe, key, type, value)
-        if size>1024*1024:
-            pipe.execute()
-            pipe=r.pipeline()
-            size=0
-    pipe.execute()
     
 
 def getRedisPool( host='localhost', port=6379, password=None, db=0):
@@ -122,7 +100,7 @@ if __name__ == '__main__':
         pool = getRedisPool(**kwargs)
         r = redis.Redis(connection_pool=pool)
         threadList=[]
-        q = Queue(1000)
+        q = Queue(parallel*2)
         emptykey=False
         if options.emptykey:
             emptykey=True
