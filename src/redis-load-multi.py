@@ -20,11 +20,11 @@ class loadThread(threading.Thread):
         size=0
         while True:
             total_line = self.queue.get()
+            if total_line == "##end##":
+                break
             lines = total_line.split('\n')
             for s in lines:
-                #print 1
-                if s == "##end##":
-                    break
+                #print 1                
                 table = json.loads(s)
                 size = size+s.__len__()
                 for key in table:
